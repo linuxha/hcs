@@ -6,3 +6,7 @@ serial.o: serial.c serial.h
 
 serial: serial.c serial.h
 	cc -DTEST serial.c -o serial
+
+# ncherry@linuxha.com 20170428
+clean:
+	rm -rf hcs serial.o serial *~ foo bar code

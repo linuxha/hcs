@@ -6,6 +6,8 @@
 #include <malloc.h>
 #include "serial.h"
 
+#include <string.h>
+
 #ifdef iAPX286
 #  define SIGTYPE int
 #  define SIGRETURN return(0)
