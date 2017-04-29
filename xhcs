@@ -1,0 +1,137 @@
+#!/bin/sh
+# the next line restarts using wish \
+exec wish "$0" "$@"
+
+wm title . "HCS II Monitor"
+#option add *font "-dec-*-medium-*-*-*-*-*-*-*-*-*-iso8859-*"
+#option add *font "-adobe-helvetica-bold-r-normal-*-14-*-*-*-*-*-*-*"
+option add *font "-adobe-helvetica-medium-r-normal-*-8-*-*-*-*-*-*-*"
+
+## menu ###########################################
+
+frame .menu -relief raised -bd 2
+pack .menu -side top -fill x
+
+menubutton .menu.file -text File -menu .menu.file.m -underline 0
+menu .menu.file.m -tearoff 0
+.menu.file.m add command -label "Set time" -command "" -underline 0
+.menu.file.m add command -label "Load program" -command "" -underline 0
+.menu.file.m add command -label "Clear log" -command "" -underline 0
+.menu.file.m add command -label "Dump log" -command "" -underline 0
+.menu.file.m add separator
+.menu.file.m add command -label "Exit" -command "exit" -underline 1
+pack .menu.file -side left
+
+menubutton .menu.help -text Help -menu .menu.help.m -underline 0
+menu .menu.help.m -tearoff 0
+.menu.help.m add command -label "About" -command "" -underline 0
+pack .menu.help -side left
+
+## containers #######################################
+
+label .daytime   -text ""
+frame .top
+pack  .top -side top
+frame .x10   -relief sunken -border 2
+pack  .x10   -side left -anchor w -fill y -in .top
+frame .center
+pack  .center -side left -fill y -anchor w -in .top
+frame .inp   -relief sunken -border 2
+pack  .inp   -side top -in .center -anchor w -fill x
+frame .net   -relief sunken -border 2
+pack  .net   -side top -anchor w -in .top
+frame .outp  -relief sunken -border 2
+pack  .outp  -in .center -anchor w -fill x
+frame .anin  -relief sunken -border 2
+pack  .anin  -in .center -anchor w -fill x
+frame .msg   -relief sunken -border 2
+pack  .msg   -side bottom -fill x
+
+## data display #######################################
+
+label .x10.title  -text "X10"      -anchor n -relief raised
+pack  .x10.title  -side top -fill x
+foreach chan [list A B C D E F G H I J K L M N O P] {
+   label .x10.c$chan  -text "$chan: 00000000 00000000"
+}
+#pack .x10.cA -side top
+
+label .inp.title  -text "Input"    -anchor n -relief raised
+pack  .inp.title  -side top -fill x
+foreach chan [list 0 1 2 3 4 5] {
+   label .inp.c$chan      -text "$chan: 00000000 00000000 00000000"
+}
+#pack  .inp.c0 -side top
+
+label .net.title  -text "Net" -relief raised
+pack  .net.title  -side top      -anchor n -fill x
+label .net.a      -text "PL-Link    00000000"
+label .net.b      -text "MC/IR-Link 00000000"
+label .net.c      -text "LCD-Link   00000000"
+label .net.d      -text "DIO-Link   00000000"
+label .net.e      -text "ADIO-Link  00000000"
+label .net.f      -text "DIO+-Link  00000000"
+#pack  .net.a      -side top -anchor w
+
+label .outp.title -text "Output"   -anchor n -relief raised
+pack  .outp.title -side top -fill x
+foreach chan [list 6 7 8 9] {
+   label .outp.c$chan     -text "$chan: 00000000 00000000 00000000"
+}
+#pack  .outp.c6     -side top
+
+label .anin.title -text "Analogin" -anchor n -relief raised
+pack  .anin.title -side top -fill x
+foreach chan [list "  0" "  8" " 96" 96b] {
+   label .anin.c$chan     -text "$chan: 000 000 000 000 000 000 000 000"
+}
+#pack  .anin.c0     -side top
+
+## extras #############################################
+
+button .top.clear -text "Clear Msgs" -command { .msg.text configure -text ""; pack forget .msg.text }
+pack   .top.clear -side bottom -fill x
+label .msg.text -justify left -text ""
+pack  .msg.text -side left -anchor nw
+
+bind . <Control-c> {destroy .}
+focus .
+
+## process input ########################################
+
+set hcs [open "|hcs -i" r+]
+#set hcs [open "|logit -i" r+]
+while { [ gets $hcs line ] != -1 } {
+   set aline [split $line :]
+   set cmd  [lindex $aline 0]
+   set chan [lindex $aline 1]
+   set data [lindex $aline 2]
+   switch $cmd {
+      error    { .msg.text configure -text $line }
+      info     { .msg.text configure -text $line }
+      Unknown  { .msg.text configure -text $line }
+      TIME     {
+                  .daytime configure -text [string range $line 5 end]
+                  pack  .daytime   -side right -in .menu
+               }
+      X10      {
+                  .x10.c$chan configure -text "$chan:$data"
+                  pack .x10.c$chan -side top -fill x
+               }
+      Net      {  }
+      Input    {
+                  .inp.c$chan configure -text "$chan:$data"
+                  pack  .inp.c$chan -side top -fill x
+               }
+      Output   {
+                  .outp.c$chan configure -text "$chan:$data"
+                  pack  .outp.c$chan     -side top -fill x
+               }
+      Analogin {
+                  .anin.c$chan configure -text "$chan:$data"
+                  pack  .anin.c$chan     -side top -fill x
+               }
+   }
+   update
+}
+close $hcs
